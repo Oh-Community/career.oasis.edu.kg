@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>報時器 (GMT+8)</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        #clock {
+            font-size: 48px;
+            color: #333;
+            padding: 20px;
+            border: 2px solid #333;
+            border-radius: 10px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div id="clock">Loading...</div>
+
+    <script>
+        function updateTime() {
+            const options = {
+                timeZone: 'Asia/Taipei',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            };
+            const now = new Date().toLocaleTimeString('zh-Hant-TW', options);
+            document.getElementById('clock').textContent = now;
+        }
+
+        setInterval(updateTime, 1000);
+        updateTime(); // 初始調用以立即顯示時間
+    </script>
+</body>
+</html>
