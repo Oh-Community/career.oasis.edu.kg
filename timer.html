@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多功能計時器</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        .timer-container {
+            width: 80%;
+            max-width: 800px;
+            background-color: #fff;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            text-align: center;
+        }
+        .timer-display {
+            font-size: 5rem;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #333;
+            font-family: 'Courier New', monospace;
+        }
+        .timer-mode {
+            margin-bottom: 20px;
+        }
+        .timer-mode button {
+            padding: 10px 15px;
+            margin: 0 5px;
+            border: none;
+            border-radius: 5px;
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+        }
+        .timer-mode button:hover {
+            background-color: #2980b9;
+        }
+        .timer-mode button.active {
+            background-color: #2c3e50;
+        }
+        .control-buttons {
+            margin: 20px 0;
+        }
+        .control-buttons button {
+            padding: 12px 24px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 50px;
+            background-color: #2ecc71;
+            color: white;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: background-color 0.3s;
+        }
+        .control-buttons button:hover {
+            background-color: #27ae60;
+        }
+        .control-buttons button#stop {
+            background-color: #e74c3c;
+        }
+        .control-buttons button#stop:hover {
+            background-color: #c0392b;
+        }
+        .control-buttons button#lap {
+            background-color: #f39c12;
+        }
+        .control-buttons button#lap:hover {
+            background-color: #d35400;
+        }
+        .control-buttons button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .countdown-settings {
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .countdown-settings input {
+            width: 60px;
+            height: 40px;
+            font-size: 1.2rem;
+            text-align: center;
+            margin: 0 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .countdown-settings span {
+            font-size: 1.2rem;
+            margin: 0 5px;
+        }
+        .laps-container {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+        .lap-item {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        .lap-item:nth-child(odd) {
+            background-color: #f9f9f9;
+        }
+        @media (max-width: 768px) {
+            .timer-display {
+                font-size: 3rem;
+            }
+            .control-buttons button {
+                padding: 8px 16px;
+                font-size: 1rem;
+                margin: 5px;
+            }
+            .countdown-settings input {
+                width: 50px;
+                height: 35px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="timer-container">
+        <div class="timer-mode">
+            <button id="stopwatch-mode" class="active">碼錶模式</button>
+            <button id="countdown-mode">倒計時模式</button>
+        </div>
+        
+        <div id="countdown-settings" class="countdown-settings" style="display: none;">
+            <input type="number" id="hours" min="0" max="99" value="0">
+            <span>時</span>
+            <input type="number" id="minutes" min="0" max="59" value="0">
+            <span>分</span>
+            <input type="number" id="seconds" min="0" max="59" value="0">
+            <span>秒</span>
+        </div>
+        
+        <div class="timer-display" id="timer">00:00:00.000</div>
+        
+        <div class="control-buttons">
+            <button id="start">開始</button>
+            <button id="stop" disabled>停止</button>
+            <button id="reset">重置</button>
+            <button id="lap" disabled>計圈</button>
+        </div>
+        
+        <div class="laps-container" id="laps"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 獲取元素
+            const timerDisplay = document.getElementById('timer');
+            const startBtn = document.getElementById('start');
+            const stopBtn = document.getElementById('stop');
+            const resetBtn = document.getElementById('reset');
+            const lapBtn = document.getElementById('lap');
+            const lapsContainer = document.getElementById('laps');
+            const stopwatchModeBtn = document.getElementById('stopwatch-mode');
+            const countdownModeBtn = document.getElementById('countdown-mode');
+            const countdownSettings = document.getElementById('countdown-settings');
+            const hoursInput = document.getElementById('hours');
+            const minutesInput = document.getElementById('minutes');
+            const secondsInput = document.getElementById('seconds');
+            
+            // 變數
+            let mode = 'stopwatch'; // 'stopwatch' or 'countdown'
+            let startTime;
+            let elapsedTime = 0;
+            let countdownTime = 0;
+            let timerInterval;
+            let lapCounter = 1;
+            let lastLapTime = 0;
+            let isRunning = false;
+            
+            // 更改模式
+            stopwatchModeBtn.addEventListener('click', function() {
+                if (mode !== 'stopwatch') {
+                    mode = 'stopwatch';
+                    updateModeButtons();
+                    resetTimer();
+                    countdownSettings.style.display = 'none';
+                    lapBtn.style.display = 'inline-block';
+                }
+            });
+            
+            countdownModeBtn.addEventListener('click', function() {
+                if (mode !== 'countdown') {
+                    mode = 'countdown';
+                    updateModeButtons();
+                    resetTimer();
+                    countdownSettings.style.display = 'flex';
+                    lapBtn.style.display = 'none';
+                }
+            });
+            
+            // 更新模式按鈕狀態
+            function updateModeButtons() {
+                stopwatchModeBtn.classList.toggle('active', mode === 'stopwatch');
+                countdownModeBtn.classList.toggle('active', mode === 'countdown');
+            }
+            
+            // 開始計時
+            startBtn.addEventListener('click', function() {
+                if (isRunning) return;
+                
+                if (mode === 'countdown') {
+                    // 計算倒計時總秒數
+                    const hours = parseInt(hoursInput.value) || 0;
+                    const minutes = parseInt(minutesInput.value) || 0;
+                    const seconds = parseInt(secondsInput.value) || 0;
+                    
+                    countdownTime = (hours * 3600 + minutes * 60 + seconds) * 1000;
+                    
+                    if (countdownTime <= 0) {
+                        alert('請設定倒計時時間！');
+                        return;
+                    }
+                    
+                    startTime = Date.now();
+                    elapsedTime = 0;
+                    
+                    // 更新介面
+                    updateCountdownDisplay();
+                    
+                    // 開始定時器
+                    timerInterval = setInterval(updateCountdownDisplay, 10);
+                } else {
+                    // 碼錶模式
+                    startTime = Date.now() - elapsedTime;
+                    
+                    // 開始定時器
+                    timerInterval = setInterval(updateStopwatchDisplay, 10);
+                }
+                
+                isRunning = true;
+                
+                // 更新按鈕狀態
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                lapBtn.disabled = mode === 'stopwatch' ? false : true;
+            });
+            
+            // 停止計時
+            stopBtn.addEventListener('click', function() {
+                if (!isRunning) return;
+                
+                // 停止定時器
+                clearInterval(timerInterval);
+                
+                if (mode === 'stopwatch') {
+                    // 碼錶模式：記錄已經過的時間
+                    elapsedTime = Date.now() - startTime;
+                }
+                
+                isRunning = false;
+                
+                // 更新按鈕狀態
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                lapBtn.disabled = true;
+            });
+            
+            // 重置計時器
+            resetBtn.addEventListener('click', function() {
+                resetTimer();
+            });
+            
+            function resetTimer() {
+                // 停止定時器
+                clearInterval(timerInterval);
+                
+                // 重置變數
+                elapsedTime = 0;
+                lapCounter = 1;
+                lastLapTime = 0;
+                isRunning = false;
+                
+                // 清空圈數容器
+                lapsContainer.innerHTML = '';
+                
+                // 更新顯示
+                if (mode === 'stopwatch') {
+                    timerDisplay.textContent = '00:00:00.000';
+                } else {
+                    updateCountdownTimeDisplay(countdownTime);
+                }
+                
+                // 更新按鈕狀態
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                lapBtn.disabled = true;
+            }
+            
+            // 記錄圈數
+            lapBtn.addEventListener('click', function() {
+                if (!isRunning || mode !== 'stopwatch') return;
+                
+                const currentTime = Date.now() - startTime;
+                const lapTime = currentTime - lastLapTime;
+                lastLapTime = currentTime;
+                
+                // 創建圈數元素
+                const lapItem = document.createElement('div');
+                lapItem.className = 'lap-item';
+                lapItem.innerHTML = `
+                    <span>圈 ${lapCounter} - 總時間: ${formatTime(currentTime)}</span>
+                    <span>單圈時間: ${formatTime(lapTime)}</span>
+                `;
+                
+                // 加入到容器
+                lapsContainer.insertBefore(lapItem, lapsContainer.firstChild);
+                
+                lapCounter++;
+            });
+            
+            // 更新碼錶顯示
+            function updateStopwatchDisplay() {
+                const currentTime = Date.now() - startTime;
+                timerDisplay.textContent = formatTime(currentTime);
+            }
+            
+            // 更新倒計時顯示
+            function updateCountdownDisplay() {
+                const currentTime = Date.now() - startTime;
+                const remainingTime = countdownTime - currentTime;
+                
+                if (remainingTime <= 0) {
+                    clearInterval(timerInterval);
+                    timerDisplay.textContent = '00:00:00.000';
+                    isRunning = false;
+                    startBtn.disabled = false;
+                    stopBtn.disabled = true;
+                    alert('倒計時結束！');
+                    return;
+                }
+                
+                updateCountdownTimeDisplay(remainingTime);
+            }
+            
+            // 更新顯示的時間格式
+            function updateCountdownTimeDisplay(time) {
+                timerDisplay.textContent = formatTime(time);
+            }
+            
+            // 格式化時間
+            function formatTime(time) {
+                // 計算時分秒毫秒
+                let milliseconds = Math.floor((time % 1000) / 10);
+                let seconds = Math.floor((time / 1000) % 60);
+                let minutes = Math.floor((time / (1000 * 60)) % 60);
+                let hours = Math.floor((time / (1000 * 60 * 60)));
+                
+                // 格式化時間字符串
+                return (
+                    (hours < 10 ? '0' + hours : hours) + ':' +
+                    (minutes < 10 ? '0' + minutes : minutes) + ':' +
+                    (seconds < 10 ? '0' + seconds : seconds) + '.' +
+                    (milliseconds < 10 ? '0' + milliseconds : milliseconds)
+                );
+            }
+            
+            // 初始化
+            resetTimer();
+        });
+    </script>
+</body>
+</html>
